@@ -1,5 +1,6 @@
 CFLAGS = -Iinclude
 CC = gcc
+SHELL = bash
 
 all: pipe_demo.x lobo_shell.x
 
@@ -25,4 +26,8 @@ pipe_demo.o: example/pipe_demo.c
 
 clean:
 	rm -f *.x *.o *~
+	rm -rf tests/output
 
+check: lobo_shell.x
+	mkdir -p tests/output
+	for t in tests/*.sh; do sh $$t; done
