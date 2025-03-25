@@ -10,6 +10,7 @@
 #include "parsetools.h"
 
 void syserror(const char *);
+void forkAndExec(char* words[], int pdfs[], int dupNum);
 
 int main() {
 
@@ -63,27 +64,8 @@ int main() {
         syserror("ERROR: could not create a pipe.");
     }
 
-    int pid;
-    pid = fork();
-    if (pid == 0) {
-        printf("Process created to run %s\n", p2Words[0]);
-        dup2(pdfs[0], 0);
-        if (close(pdfs[1]) == -1) {
-            syserror("Cannot close pdfs[1].");
-        }
-        execvp(p2Words[0], p2Words);
-        syserror("ERROR: cannot execute second process.");
-    }
-    pid = fork();
-    if (pid == 0) {
-        printf("Process created to run %s\n", p1Words[0]);
-        dup2(pdfs[1], 1);
-        if (close(pdfs[0]) == -1) {
-            syserror("Cannot close pdfs[0].");
-        }
-        execvp(p1Words[0], p1Words);
-        syserror("ERROR: cannot execute first process.");
-    }
+    forkAndExec(p1Words, pdfs, 1);
+    forkAndExec(p2Words, pdfs, 0);
 
     close (pdfs[0]);
     close (pdfs[1]);
@@ -99,4 +81,22 @@ void syserror(const char *s)
     fprintf(stderr, "%s\n", s);
     fprintf(stderr, " (%s)\n", strerror(errno));
     exit(1);
+}
+
+void forkAndExec(char* words[], int pdfs[], int dupNum) {
+    int pid = fork();
+    if (pid != 0) {
+        return;
+    }
+    // pdfs must be piped
+    if (pdfs != NULL) {
+        if (dupNum != 0 && dupNum != 1) {
+            syserror("Invalid dupNum.");
+        }
+        dup2(pdfs[dupNum], dupNum);
+        if (close(pdfs[0]) == -1 || close(pdfs[1]) == -1) {
+            syserror("Cannot close pdfs.");
+        }
+    }
+    execvp(words[0], words);
 }
