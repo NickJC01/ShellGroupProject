@@ -116,12 +116,12 @@ void forkAndExec(char *words[]) {
             remove_redirect_tokens(words, i);
             i--;  // re-check current index
         }
-        
-        if (strcmp(words[i], ">") == 0) {  // output redirection (overwrite); 
+
+        if (strcmp(words[i], ">") == 0) {  // output redirection (overwrite);
             int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644); // open file for overwrite
 
-            if (fd == -1) syserror("failed to open output file"); 
-            if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout"); 
+            if (fd == -1) syserror("failed to open output file");
+            if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
             close(fd);
             remove_redirect_tokens(words, i);
             i--;
@@ -147,13 +147,11 @@ void forkAndExec(char *words[]) {
 void forkAndExecWR(char *words[], int *pipes[], int numPipes) {
     int pid = fork();
     if (pid > 0) {
-        waitpid(pid, NULL, 0);
         return;
     } else if (pid < 0) {
         syserror("ERROR: fork failed");
     }
     if (dup2(pipes[numPipes - 1][1], STDOUT_FILENO) == -1) {
-
         syserror("failed to redirect stdout to pipe");
     }
     closeAllPipes(pipes, numPipes);
@@ -176,7 +174,8 @@ void forkAndExecWR(char *words[], int *pipes[], int numPipes) {
             remove_redirect_tokens(words, i);
             i--;
 
-        } else if (strcmp(words[i], ">>") == 0) {
+        }
+        else if (strcmp(words[i], ">>") == 0) {
             int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
             if (fd == -1) syserror("failed to open output file for append");
             if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
@@ -194,7 +193,6 @@ void forkAndExecWR(char *words[], int *pipes[], int numPipes) {
 void forkAndExecRD(char *words[], int *pipes[], int numPipes) {
     int pid = fork();
     if (pid > 0) {
-        waitpid(pid, NULL, 0);
         return;
     } else if (pid < 0) {
         syserror("ERROR: fork failed");
@@ -226,7 +224,6 @@ void forkAndExecRD(char *words[], int *pipes[], int numPipes) {
 void forkAndExecRDWR(char *words[], int *pipes[], int numPipes) {
     int pid = fork();
     if (pid > 0) {
-        waitpid(pid, NULL, 0);
         return;
     } else if (pid < 0) {
         syserror("ERROR: fork failed");
