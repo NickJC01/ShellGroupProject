@@ -11,7 +11,7 @@
 
 void syserror(const char *);
 
-int getProcessWords(char *pWords[], char *lWords[], int *lIndex);
+u_int8_t getProcessWords(char *pWords[], char *lWords[], int *lIndex);
 
 void forkAndExec(char *words[]);
 
@@ -23,16 +23,9 @@ void forkAndExecRDWR(char *words[], int *pipes[], int numPipes);
 
 void closeAllPipes(int *pipes[], int numPipes);
 
-void remove_redirect_tokens(char *words[], int index) {
-    // Removes both words[index] and words[index+1] from the array
-    int i = index;
-    while (words[i + 2] != NULL) {
-        words[i] = words[i + 2];
-        i++;
-    }
-    words[i] = NULL;
-    words[i + 1] = NULL;
-}
+void handleRedirects(char *words[]);
+
+void remove_redirect_tokens(char *words[], int index);
 
 int main() {
 
@@ -101,45 +94,14 @@ void syserror(const char *s) {
 void forkAndExec(char *words[]) {
     int pid = fork(); // fork the current process
     if (pid > 0) {
-        waitpid(pid, NULL, 0);
         return;
     } else if (pid < 0) {
         syserror("ERROR: fork failed");
     }
-
-    for (int i = 0; words[i] != NULL; i++) { // loop through all words to check for output redirection
-        if (strcmp(words[i], "<") == 0) {
-            int fd = open(words[i + 1], O_RDONLY);
-            if (fd == -1) syserror("failed to open input file");
-            if (dup2(fd, STDIN_FILENO) == -1) syserror("failed to redirect stdin");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;  // re-check current index
-        }
-
-        if (strcmp(words[i], ">") == 0) {  // output redirection (overwrite);
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644); // open file for overwrite
-
-            if (fd == -1) syserror("failed to open output file");
-            if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-        else if (strcmp(words[i], ">>") == 0) {  // output redirection (append)
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (fd == -1) syserror("ERROR: Failed to open output file for append");
-            if (dup2(fd, STDOUT_FILENO) == -1) syserror("ERROR: Failed to redirect stdout");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-    }
+    // no pipes to close here
+    handleRedirects(words);
 
     execvp(words[0], words); // replace process image with specified command
-
     syserror("ERROR: execvp() failed.");
 }
 
@@ -155,36 +117,7 @@ void forkAndExecWR(char *words[], int *pipes[], int numPipes) {
         syserror("failed to redirect stdout to pipe");
     }
     closeAllPipes(pipes, numPipes);
-
-    for (int i = 0; words[i] != NULL; i++) {
-        if (strcmp(words[i], "<") == 0) {
-            int fd = open(words[i + 1], O_RDONLY);
-            if (fd == -1) syserror("ERROR: failed to open input file");
-            if (dup2(fd, STDIN_FILENO) == -1) syserror("ERROR: failed to redirect stdin");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-        if (strcmp(words[i], ">") == 0) {
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (fd == -1) syserror("Failed to open output file");
-            if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-        else if (strcmp(words[i], ">>") == 0) {
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (fd == -1) syserror("failed to open output file for append");
-            if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-    }
+    handleRedirects(words);
 
     execvp(words[0], words);
     syserror("ERROR: execvp() failed.");
@@ -202,19 +135,7 @@ void forkAndExecRD(char *words[], int *pipes[], int numPipes) {
         syserror("failed to redirect stdin from pipe");
 
     closeAllPipes(pipes, numPipes);
-
-    for (int i = 0; words[i] != NULL; i++) {
-        if (strcmp(words[i], "<") == 0) {
-
-            int fd = open(words[i + 1], O_RDONLY);
-            if (fd == -1) syserror("failed to open input file");
-            if (dup2(fd, STDIN_FILENO) == -1) syserror("failed to redirect stdin");
-            close(fd);
-            remove_redirect_tokens(words, i);
-            i--;
-
-        }
-    }
+    handleRedirects(words);
 
     execvp(words[0], words);
     syserror("ERROR: execvp() failed.");
@@ -235,7 +156,51 @@ void forkAndExecRDWR(char *words[], int *pipes[], int numPipes) {
         syserror("failed to redirect stdout to next pipe");
 
     closeAllPipes(pipes, numPipes);
+    handleRedirects(words);
 
+    execvp(words[0], words);
+    syserror("ERROR: execvp() failed.");
+}
+
+u_int8_t getProcessWords(char *pWords[], char *lWords[], int *lIndex) {
+    // lIndex is a pointer bc it will be used further in main
+    // and its dereference value must be up-to-date for main
+    int pIndex = 0;
+    while (lWords[*lIndex] != NULL && strcmp(lWords[*lIndex], "|") != 0) {
+        pWords[pIndex++] = lWords[*lIndex];
+        (*lIndex)++;
+    }
+    pWords[pIndex] = NULL; // last word in array for execv() must be NULL
+
+    // return, indicating if hit a NULL or a pipe
+    if (lWords[*lIndex] == NULL) { // return from NULL
+        return 0;
+    } else { // return from pipe
+        (*lIndex)++;
+        return 1;
+    }
+}
+
+void closeAllPipes(int *pipes[], int numPipes) {
+    for (int i = 0; i < numPipes; i++) { // free pipes
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+        free(pipes[i]);
+    }
+}
+
+void remove_redirect_tokens(char *words[], int index) {
+    // Removes both words[index] and words[index+1] from the array
+    int i = index;
+    while (words[i + 2] != NULL) {
+        words[i] = words[i + 2];
+        i++;
+    }
+    words[i] = NULL;
+    words[i + 1] = NULL;
+}
+
+void handleRedirects(char *words[]) {
     for (int i = 0; words[i] != NULL; i++) {
         if (strcmp(words[i], "<") == 0) {
             int fd = open(words[i + 1], O_RDONLY);
@@ -264,35 +229,5 @@ void forkAndExecRDWR(char *words[], int *pipes[], int numPipes) {
             i--;
 
         }
-    }
-
-    execvp(words[0], words);
-    syserror("ERROR: execvp() failed.");
-}
-
-int getProcessWords(char *pWords[], char *lWords[], int *lIndex) {
-    // lIndex is a pointer bc it will be used further in main
-    // and its dereference value must be up-to-date for main
-    int pIndex = 0;
-    while (lWords[*lIndex] != NULL && strcmp(lWords[*lIndex], "|") != 0) {
-        pWords[pIndex++] = lWords[*lIndex];
-        (*lIndex)++;
-    }
-    pWords[pIndex] = NULL; // last word in array for execv() must be NULL
-
-    // return, indicating if hit a NULL or a pipe
-    if (lWords[*lIndex] == NULL) { // return from NULL
-        return 0;
-    } else { // return from pipe
-        (*lIndex)++;
-        return 1;
-    }
-}
-
-void closeAllPipes(int *pipes[], int numPipes) {
-    for (int i = 0; i < numPipes; i++) { // free pipes
-        close(pipes[i][0]);
-        close(pipes[i][1]);
-        free(pipes[i]);
     }
 }
