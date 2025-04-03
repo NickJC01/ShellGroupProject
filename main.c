@@ -27,7 +27,8 @@ void forkAndExec(char *words[]);
 // and execs according to words.
 void forkAndExecWR(char *words[], int *pipes[], int numPipes);
 
-
+// Given words[], the words used to call the process, this function forks
+// a new process, reads from pipes[numPipes - 1], and execs according to words. 
 void forkAndExecRD(char *words[], int *pipes[], int numPipes);
 
 // Given words[], the words used to call the process, this function forks
