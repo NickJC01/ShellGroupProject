@@ -9,22 +9,46 @@
 #include "constants.h"
 #include "parsetools.h"
 
+// Writes an error message to stderr and exits.
 void syserror(const char *);
 
+// Given lWords, a list of all words in the line, and lIndex, the index
+// to begin extracting words from, this function extracts the words used
+// in calling a process and puts them in pWords.
+// It detects the end of a process's words when it reaches | or NULL.
 u_int8_t getProcessWords(char *pWords[], char *lWords[], int *lIndex);
 
+// Given words[], the words used to call the process, this function forks
+// a new process and execs according to words.
 void forkAndExec(char *words[]);
 
+// Given words[], the words used to call the process, this function forks
+// a new process, creates a new pipe to write to (storing it in pipes[numPipes]),
+// and execs according to words.
 void forkAndExecWR(char *words[], int *pipes[], int numPipes);
 
+// Given words[], the words used to call the process, this function forks
+// a new process, reads from pipes[numPipes - 1], and execs according to words. 
 void forkAndExecRD(char *words[], int *pipes[], int numPipes);
 
+// Given words[], the words used to call the process, this function forks
+// a new process, reads from pipes[numPipes - 1], creates a new pipe to write to
+// (storing it in pipes[numPipes]), and execs according to words. 
 void forkAndExecRDWR(char *words[], int *pipes[], int numPipes);
 
+// Given pipes[], the list of all created pipes, and numPipes, this function
+// loops through pipes[0] to pipes[numPipes - 1], closing both ends of the pipe
+// and freeing them.
 void closeAllPipes(int *pipes[], int numPipes);
 
+// Given words[], the words used to call the process, this function detects 
+// stdin and stdout overrides, executes them, and removes the override tokens
+// from words so it can be used in any of the forkAndExec functions.
 void handleRedirects(char *words[]);
 
+// Given words[], this function removes the override tokens
+// from words so it can be used in any of the forkAndExec functions.
+// It is called in handleRedirects()
 void remove_redirect_tokens(char *words[], int index);
 
 int main() {
