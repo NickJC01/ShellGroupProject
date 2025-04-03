@@ -120,10 +120,31 @@ void remove_redirect_tokens(char *words[], int index);
 >> when your shell is processing the user-entered commands:
 >>   foo 1 2 | bar 3 4
 
+First, getProcessWords() is called in the parent to extract foo 1 2.
+Because getProcessWords() ended on a pipe but no pipes to read from
+have been created yet, forkAndExecWr() is called to exec foo. Within
+forkAndExecWr(), handleRedirects() is called to search for and <, > or
+>> and override stdin or stdout if needed, but it is not. forkAndExecWr()
+calls closeAllPipes() before exec().
+
+Then, getProcessWords() is called again in the parent to extract bar 3 4.
+Because getProcessWords() ended on a NULL and there exists a pipe to read 
+from, forkAndExecRD() is called to exec bar. Within
+forkAndExecRD(), handleRedirects() is called to search for and <, > or
+>> and override stdin or stdout if needed, but it is not. forkAndExecRD()
+calls closeAllPipes() before exec().
+
+Lastly, the parent calls closeAllPipes().
+
 >> A7: Briefly describe your approch for reaping child processes. When do
 >> you reap, and how much do you reap at a time? Would it be possible to
 >> reap children earlier than your current implementation and, if so,
 >> what situations might that benefit?
+
+When getProcessWords() returns indicating it hit a NULL, the parent
+processes knows the end of the line has been hit and no more processes
+will be created. With this, in main(), the parent waits for all children
+and reaps them using while (wait(NULL) != -1).
 
 ---- RATIONALE ----
 
