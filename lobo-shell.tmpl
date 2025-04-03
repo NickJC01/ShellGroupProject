@@ -10,7 +10,7 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
+Meaghan Boykin boykinm@sonoma.edu
 FirstName LastName <email@domain.example>
 
 ---- PRELIMINARIES ----
@@ -55,6 +55,10 @@ FirstName LastName <email@domain.example>
 >>         set-up-pipeline-for( process P[i] )
 >> What prior-created pipes would be used with process P[i]?
 >> What new pipes need to be created to set up P[i]'s pipeline?
+
+The pipe created by P[i-1], which it wrote to, would be used in P[i]
+to read from. If P[i] is followed by a |, it would need
+to create a new pipe to write to.
 
 ---- DATA STRUCTURES ----
 
