@@ -9,6 +9,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="Remote Host (582c7ca5-240c-4948-8710-d7d2c3a98f42)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.0QKHQynYNH" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
   </component>
 </project>
