@@ -152,6 +152,13 @@ processes knows the end of the line has been hit and no more processes
 will be created. With this, in main(), the parent waits for all children
 and reaps them using while (wait(NULL) != -1).
 
+We experimented with reaping one child at a time within calls to any of
+the forkAndExec function variations, but this resulted the the parent
+process never ending. The only variation it would work within is the
+plain forkAndExec(), which is only used when one child process is
+created, meaning there are no pipes. So, reaping earlier is possible
+only in this situation.
+
 ---- RATIONALE ----
 
 >> A8: Does any aspect of our shell require multithreading or related
