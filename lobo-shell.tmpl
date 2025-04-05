@@ -80,11 +80,10 @@ None of the above types were created.
 // Writes an error message to stderr and exits.
 void syserror(const char *);
 
-// Given lWords, a list of all words in the line, and lIndex, the index
-// to begin extracting words from, this function extracts the words used
-// in calling a process and puts them in pWords.
-// It detects the end of a process's words when it reaches | or NULL
-// and returns 0 if ended on a NULL or 1 if ended on a |.
+// Given lWords, a list of all words in the line, and lIndex,
+// it extracts one process's words from lWords
+// starting at lIndex and puts them in pWords.
+// Returns 0 if ended on a NULL or 1 if ended on a |.
 u_int8_t getProcessWords(char *pWords[], char *lWords[], int *lIndex);
 
 // Given words[], the words used to call the process, this function forks
