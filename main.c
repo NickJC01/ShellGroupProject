@@ -270,7 +270,7 @@ void handleRedirects(char *words[]) {
 void replaceQuotes(char *words[]) {
     int i = 0;
     int quoteStart = -1; // -1 indicates no start quote found
-    char newString[1024];
+    char *newString = (char *) malloc(1024);
     while (words[i] != NULL) {
         char startChar = words[i][0];
         char endChar = words[i][strlen(words[i]) - 1];
