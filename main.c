@@ -279,7 +279,7 @@ void replaceQuotes(char *words[]) {
                 quoteStart = i;
                 strcpy(newString, &words[i][1]);
             }
-            else {
+            else { // single word within quotes
                 words[i][strlen(words[i]) - 1] = '\0'; // replace quote with null to concatenate
                 strcpy(newString, &words[i][1]);
                 replace_section(words, i, i, newString);
@@ -309,10 +309,4 @@ void replace_section(char *words[], int start, int end, char *newStr) {
         start++;
     }
     words[start] = NULL;
-    int i = 0;
-    puts("words:");
-    while (words[i] != NULL) {
-        puts(words[i]);
-        i++;
-    }
 }
