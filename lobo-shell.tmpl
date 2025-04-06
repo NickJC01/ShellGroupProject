@@ -119,6 +119,13 @@ void handleRedirects(char *words[]);
 // It is called in handleRedirects()
 void remove_redirect_tokens(char *words[], int index);
 
+// Replaces phrases within quotes with a single string with quotes
+// removed. Words are separated by a comma.
+void replaceQuotes(char *words[]);
+
+// Replaces words at start through end index with newStr.
+void replace_section(char *words[], int start, int end, char *newStr);
+
 ---- ALGORITHMS ----
 
 >> A6: Briefly describe how the functions (from A3) are called
