@@ -275,8 +275,15 @@ void replaceQuotes(char *words[]) {
         char startChar = words[i][0];
         char endChar = words[i][strlen(words[i]) - 1];
         if (startChar == '"') { // start quote
-            quoteStart = i;
-            strcpy(newString, &words[i][1]);
+            if (endChar != '"') {
+                quoteStart = i;
+                strcpy(newString, &words[i][1]);
+            }
+            else {
+                words[i][strlen(words[i]) - 1] = '\0'; // replace quote with null to concatenate
+                strcpy(newString, &words[i][1]);
+                replace_section(words, i, i, newString);
+            }
         }
         else if (endChar == '"') { // this is an end quote
             words[i][strlen(words[i]) - 1] = '\0'; // replace quote with null to concatenate
