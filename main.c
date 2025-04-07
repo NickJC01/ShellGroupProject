@@ -274,8 +274,8 @@ void replaceQuotes(char *words[]) {
     while (words[i] != NULL) {
         char startChar = words[i][0];
         char endChar = words[i][strlen(words[i]) - 1];
-        if (startChar == '"') { // start quote
-            if (endChar != '"') {
+        if (startChar == '"' || startChar == '\'') { // start quote
+            if (endChar != '"' && endChar != '\'') {
                 quoteStart = i;
                 strcpy(newString, &words[i][1]);
             }
@@ -283,14 +283,17 @@ void replaceQuotes(char *words[]) {
                 words[i][strlen(words[i]) - 1] = '\0'; // replace quote with null to concatenate
                 strcpy(newString, &words[i][1]);
                 replace_section(words, i, i, newString);
+                quoteStart = -1;
+                newString = (char*) malloc(1024);
             }
         }
-        else if (endChar == '"') { // this is an end quote
+        else if (endChar == '"' || endChar == '\'') { // this is an end quote
             words[i][strlen(words[i]) - 1] = '\0'; // replace quote with null to concatenate
             strcat(newString, " ");
             strcat(newString, words[i]);
             replace_section(words, quoteStart, i, newString);
             quoteStart = -1;
+            newString = (char*) malloc(1024);
         }
         else if (quoteStart != -1) { // between quotes
             strcat(newString, " ");
