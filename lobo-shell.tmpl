@@ -136,15 +136,15 @@ First, getProcessWords() is called in the parent to extract foo 1 2.
 Because getProcessWords() ended on a pipe but no pipes to read from
 have been created yet, forkAndExecWr() is called to exec foo. Within
 forkAndExecWr(), handleRedirects() is called to search for and <, > or
->> and override stdin or stdout if needed, but it is not. forkAndExecWr()
-calls closeAllPipes() before exec().
+>> and override stdin or stdout if needed, but it is not. replaceQuotes()
+is also called but has no effect. forkAndExecWr() calls closeAllPipes() 
+before exec().
 
 Then, getProcessWords() is called again in the parent to extract bar 3 4.
 Because getProcessWords() ended on a NULL and there exists a pipe to read 
 from, forkAndExecRD() is called to exec bar. Within
-forkAndExecRD(), handleRedirects() is called to search for and <, > or
->> and override stdin or stdout if needed, but it is not. forkAndExecRD()
-calls closeAllPipes() before exec().
+forkAndExecRD(), handleRedirects() and replaceQuotes() are called but have no 
+effect. forkAndExecRD() calls closeAllPipes() before exec().
 
 Lastly, the parent calls closeAllPipes().
 
