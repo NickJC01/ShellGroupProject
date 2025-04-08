@@ -172,12 +172,29 @@ only in this situation.
 >> (http://git.savannah.gnu.org/cgit/bash.git/) multithreaded?
 >> What did you grep to determine the answer?
 
+Our shell does not require multithreading or synchronization primitives. 
+Each command is executed in a separate child process via fork(), and 
+parent-child coordination is handled using wait() or waitpid(), so 
+ no threads or shared memory regions are accessed concurrently
+
+We looked at whether the official Bash shell is multithreaded by 
+checking its source with: 
+
+grep -r pthread_create .
+grep -r pthread_mutex .
+
+Both returned no results that supports that Bash operates as a 
+single-threaded shell. The visible calls only appear in configure, 
+config.log, and m4 scripts (used for build testing), not in 
+Bash's actual runtime logic. 
+ 
 >> A9: Develop a new test, not covered by existing tests. Provide the 
 >> code implementing that test. When possible, follow the format of 
 >> existing tests. Explain what functionality it tests and how it goes 
 >> beyond the provided tests.
 
-
+We implemented test-9-double-quotes.sh, a test to check both single 
+and double quote handling in our shell implementation.
 
 
                SURVEY QUESTIONS
@@ -192,6 +209,7 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
 
@@ -200,3 +218,4 @@ the quarter.
 >> find any of our guidance to be misleading?
 
 >> Any other comments?
+
