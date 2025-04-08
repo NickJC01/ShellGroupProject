@@ -59,57 +59,61 @@ void replaceQuotes(char *words[]);
 void replace_section(char *words[], int start, int end, char *newStr);
 
 int main() {
-
-    // Buffer for reading one line of input
     char line[MAX_LINE_CHARS];
-    // holds separated words based on whitespace
     char *line_words[MAX_LINE_WORDS + 1];
-    // holds the pipes
-    // the thought is at most half the words can be commands
-    // ex w/ nine "words": ls | wc | wc | wc | tail (four pipes)
-    int *pipes[MAX_LINE_WORDS / 2 + 1];
-    int numPipes = 0;
 
-    // Loop until user hits Ctrl-D (end of input)
-    // or some other input error occurs
+    // Loop until user hits Ctrl-D or an input error
     while (fgets(line, MAX_LINE_CHARS, stdin)) {
-        split_cmd_line(line, line_words);
+        // Remove trailing newline
+        line[strcspn(line, "\n")] = 0;
+
+        // Fork for each full line so that commands like
+        // "whoami > file" and "cat file" are handled separately
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child: execute line
+            split_cmd_line(line, line_words);
+
+            int lineIndex = 0;
+            int *pipes[MAX_LINE_WORDS / 2 + 1];
+            int numPipes = 0;
+            u_int8_t read = 0;
+
+            while (1) {
+                char *pWords[MAX_LINE_WORDS + 1];
+                int nullRet = getProcessWords(pWords, line_words, &lineIndex);
+
+                if (nullRet == 0) {
+                    if (read == 0) {
+                        forkAndExec(pWords);
+                    } else {
+                        forkAndExecRD(pWords, pipes, numPipes);
+                    }
+                    break;
+                } else if (read == 0) {
+                    int *pdfs = malloc(2 * sizeof(int));
+                    pipe(pdfs);
+                    pipes[numPipes++] = pdfs;
+                    read = 1;
+
+                    forkAndExecWR(pWords, pipes, numPipes);
+                } else {
+                    int *pdfs = malloc(2 * sizeof(int));
+                    pipe(pdfs);
+                    pipes[numPipes++] = pdfs;
+
+                    forkAndExecRDWR(pWords, pipes, numPipes);
+                }
+            }
+
+            closeAllPipes(pipes, numPipes);
+            while (wait(NULL) != -1); // wait for children
+            exit(0);
+        } else {
+            waitpid(pid, NULL, 0); // wait for this command line to complete
+        }
     }
 
-    int lineIndex = 0;
-    u_int8_t read = 0; // acting as boolean - is this process reading from a pipe?
-    while (1) {
-        char *pWords[MAX_LINE_WORDS + 1];
-        int nullRet = getProcessWords(pWords, line_words, &lineIndex);
-        if (nullRet == 0) { // exited from a NULL -> end of input, not writing to a pipe
-            if (read == 0) { // not reading from a pipe
-                forkAndExec(pWords);
-            }
-            else { // reading from a pipe
-                forkAndExecRD(pWords, pipes, numPipes);
-            }
-            break;
-        }
-        else if (read == 0) { // not reading from a pipe but writing to a pipe
-            int *pdfs = (int *) malloc(2 * sizeof(int));
-            pipe(pdfs);
-            pipes[numPipes] = pdfs;
-            numPipes++;
-            read = 1; // next process will be on the read end
-            forkAndExecWR(pWords, pipes, numPipes);
-        }
-        else { // reading and writing from a pipe
-            int *pdfs = (int *) malloc(2 * sizeof(int));
-            pipe(pdfs);
-            pipes[numPipes] = pdfs;
-            numPipes++;
-            // read is already 1
-            forkAndExecRDWR(pWords, pipes, numPipes);
-        }
-    }
-
-    closeAllPipes(pipes, numPipes);
-    while (wait(NULL) != -1); // reap children
 
     return 0;
 }
@@ -247,7 +251,7 @@ void handleRedirects(char *words[]) {
 
         }
         else if (strcmp(words[i], ">") == 0) {
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
             if (fd == -1) syserror("failed to open output file");
             if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
             close(fd);
@@ -256,7 +260,7 @@ void handleRedirects(char *words[]) {
 
         }
         else if (strcmp(words[i], ">>") == 0) {
-            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
+            int fd = open(words[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0666);
             if (fd == -1) syserror("failed to open output file for append");
             if (dup2(fd, STDOUT_FILENO) == -1) syserror("failed to redirect stdout");
             close(fd);
