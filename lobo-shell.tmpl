@@ -11,7 +11,7 @@
 >> Fill in the names and email addresses of your group members.
 
 Meaghan Boykin boykinm@sonoma.edu
-FirstName LastName <email@domain.example>
+Nicholas Chaudoir chaudoir@sonoma.edu
 
 ---- PRELIMINARIES ----
 
@@ -36,9 +36,14 @@ sysError() taken from pipe_demo.c
 >> example shell and list the parameters used in
 >>     open(bar,...)
 >> for each of these scenarios:
->>   (i) foo > bar
->>  (ii) foo < bar
->> (iii) foo >> bar
+>>   (i) foo > bar = open("bar", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+>>  (ii) foo < bar = open("bar", O_RDONLY);
+>> (iii) foo >> bar = open("bar", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+   (i) foo > bar = open("bar", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  (ii) foo < bar = open("bar", O_RDONLY);
+ (iii) foo >> bar = open("bar", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
 
 >> A2: Create scenarios to test and describe how bash behaves in
 >> each of these scenarios:
@@ -48,6 +53,27 @@ sysError() taken from pipe_demo.c
 >>  (iv) foo > bar, when "bar" cannot be created?
 >> In each case, give the commands you used to create and evaluate 
 >> the scenario.
+
+  (i) foo < bar, when "bar" does not exist?
+  Test: cat < no_such_file
+  Output: bash: no_such_file: No such file or directory
+
+  (ii) foo < bar, when "bar" exists but you lack permission to read it?
+  Test: touch bar
+        chmod 000 bar
+        cat < bar
+  Output: bash: bar: Permission denied
+
+  (iii) foo > bar, when "bar" exists but you lack permission to write it?
+  Test: touch bar
+        chmod 444 bar
+        echo hello > bar
+  Output: bash: bar: Permission denied
+  (iv) foo > bar, when "bar" cannot be created?
+  Test: mkdir readonly_dir
+        chmod 555 readonly_dir
+        echo hello > readonly_dir/bar
+  Output: bash: readonly_dir/bar: Permission denied
 
 >> A3: Unix pipes allow synchronization among processes to facilitate
 >> interprocess communication (IPC). Consider a pipeline of arbitrary
@@ -197,6 +223,83 @@ We implemented test-9-double-quotes.sh, a test to check both single
 and double quote handling in our shell implementation. We were
 having issues with commands with multiple quotes that were not caught
 by the original tests.
+
+----- test-9-double-quotes.sh -----
+
+#!/bin/bash
+TEST=$(basename "${0%.sh}")
+OUTPUT=$(realpath "$(dirname "$0")")/output
+OUT="$OUTPUT/$TEST.out"
+EOUT="$OUTPUT/$TEST.eout"
+LOG="$OUTPUT/$TEST.log"
+LOBO="./lobo_shell.x"
+BASH=$(which bash)
+
+test "tests" != "$(basename "$(dirname "$(realpath "$0")")")" && { echo "FAIL: $0 not in 'tests'"; exit 1; }
+[ ! -x "$LOBO" ] && { echo "FAIL: $LOBO must exist"; exit 2; }
+
+mkdir -p "$OUTPUT"
+rm -f "$OUT" "$EOUT" tests/output/tmp
+
+umask 002
+
+cat >"$LOG" << 'EOF'
+Commands:
+---------
+echo "This is double quoted text" > tests/output/tmp
+echo 'This is single quoted text' >> tests/output/tmp
+cat tests/output/tmp
+---------
+EOF
+
+# LOBO
+"$LOBO" >"$OUT" 2>&1 << 'EOF'
+echo "This is double quoted text" > tests/output/tmp
+echo 'This is single quoted text' >> tests/output/tmp
+cat tests/output/tmp
+EOF
+
+# Bash
+"$BASH" >"$EOUT" 2>&1 << 'EOF'
+echo "This is double quoted text" > tests/output/tmp
+echo 'This is single quoted text' >> tests/output/tmp
+cat tests/output/tmp
+EOF
+
+# Check file exists and contents
+if [ ! -s tests/output/tmp ]; then
+    echo "FAIL $TEST: tmp not created or empty" >> "$LOG"
+    ls -l tests/output/tmp >> "$LOG" 2>&1
+    echo "FAIL $TEST"
+    exit 1
+fi
+
+# Check permissions
+if [ -z "$(find tests/output/tmp -perm -664)" ]; then
+    echo "FAIL $TEST: tmp permissions wrong" >> "$LOG"
+    stat tests/output/tmp >> "$LOG"
+    echo "FAIL $TEST"
+    exit 2
+fi
+
+# Log debug output
+echo "[DEBUG] TMP CONTENTS:" >> "$LOG"
+cat tests/output/tmp >> "$LOG"
+echo "[DEBUG] EOUT:" >> "$LOG"
+cat "$EOUT" >> "$LOG"
+echo "[DEBUG] OUT:" >> "$LOG"
+cat "$OUT" >> "$LOG"
+
+# Compare
+diff <(sed -E 's/[[:space:]]+$//' "$EOUT") <(sed -E 's/[[:space:]]+$//' "$OUT") >> "$LOG"
+echo "---------" >> "$LOG"
+
+# Final pass/fail
+if diff -q <(sed -E 's/[[:space:]]+$//' "$EOUT") <(sed -E 's/[[:space:]]+$//' "$OUT") >/dev/null; then
+    echo "PASS $TEST"
+else
+    echo "FAIL $TEST"
+fi
 
 
                SURVEY QUESTIONS
