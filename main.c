@@ -274,7 +274,7 @@ void handleRedirects(char *words[]) {
 void replaceQuotes(char *words[]) {
     int i = 0;
     int quoteStart = -1; // -1 indicates no start quote found
-    char *newString = (char *) malloc(1024);
+    char *newString = (char *) malloc(255); // max number of characters in file name
     while (words[i] != NULL) {
         char startChar = words[i][0];
         char endChar = words[i][strlen(words[i]) - 1];
@@ -288,7 +288,7 @@ void replaceQuotes(char *words[]) {
                 strcpy(newString, &words[i][1]);
                 replace_section(words, i, i, newString);
                 quoteStart = -1;
-                newString = (char*) malloc(1024);
+                newString = (char*) malloc(255); // max number of characters in file name
             }
         }
         else if (endChar == '"' || endChar == '\'') { // this is an end quote
@@ -297,7 +297,7 @@ void replaceQuotes(char *words[]) {
             strcat(newString, words[i]);
             replace_section(words, quoteStart, i, newString);
             quoteStart = -1;
-            newString = (char*) malloc(1024);
+            newString = (char*) malloc(255); // max number of characters in file name
         }
         else if (quoteStart != -1) { // between quotes
             strcat(newString, " ");
